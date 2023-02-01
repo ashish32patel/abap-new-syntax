@@ -48,6 +48,9 @@ CLASS zcl_akp_new_syntax DEFINITION
       IMPORTING
         out TYPE REF TO if_oo_adt_classrun_out.
 
+    METHODS corresponding_operator
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
 
   PRIVATE SECTION.
     METHODS display_structure1
@@ -95,7 +98,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    fieldSymbol_vs_dataReference( out ).
 *    new_vs_value( out ).
 *    embedded_expressions( out ).
-    move_corresponding( out ).
+*    move_corresponding( out ).
+    corresponding_operator( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -182,6 +186,87 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     MOVE-CORRESPONDING lt_tab1 TO lt_tab2 EXPANDING NESTED TABLES KEEPING TARGET LINES.
     out->write( '>>MOVE-CORRESPONDING lt_tab1 to lt_tab2 EXPANDING NESTED TABLES KEEPING TARGET LINES.' ).
     display_tab2( it_tab2 = lt_tab2 out = out ).
+  ENDMETHOD.
+
+  METHOD corresponding_operator.
+    "compare with the operations in move_corresponding.
+    DATA:
+      ls_struct1 TYPE ty_struct1,
+      ls_struct2 TYPE ty_struct2.
+
+
+*    clear_fill_structures(
+*      CHANGING
+*        cs_struct2 = ls_struct2
+*        cs_struct1 = ls_struct1 ).
+*
+*    me->display_structure1( out = out is_struct1 = ls_struct1 ).
+*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+***********************************************************************
+*    out->write( '>> ls_struct2 = CORRESPONDING #( ls_struct1 ).' ).
+*    out->write( |Note: It's not same as MOVE-CORRESPONDING notice COL4 for difference \n    as it target stucture is first overridden| ).
+*
+*    ls_struct2 = CORRESPONDING #( ls_struct1 ).
+*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+***********************************************************************
+*    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
+*    out->write( '>> ls_struct2 = CORRESPONDING #( BASE ( ls_struct2 ) ls_struct1 ).' ).
+*    out->write( |Note: It's same as MOVE-CORRESPONDING| ).
+*
+*    ls_struct2 = CORRESPONDING #( BASE ( ls_struct2 ) ls_struct1 ).
+*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+***********************************************************************
+*    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
+*    out->write( 'MOVE-CORRESPONDING ls_struct1 to ls_struct2 EXPANDING NESTED TABLES.' ).
+*
+*    MOVE-CORRESPONDING ls_struct1 TO ls_struct2 EXPANDING NESTED TABLES.
+*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+***********************************************************************
+*    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
+*    out->write( 'ls_struct2 = CORRESPONDING #( DEEP BASE ( ls_struct2 ) ls_struct1 ).' ).
+*
+*    ls_struct2 = CORRESPONDING #( DEEP BASE ( ls_struct2 ) ls_struct1 ).
+*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+**********************************************************************
+    DATA: lt_tab1 TYPE  tt_tab1,
+          lt_tab2 TYPE tt_tab2.
+
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+
+    out->write( '===============Begin TABLE section===============' ).
+    display_tab1( it_tab1 = lt_tab1 out = out ).
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+**********************************************************************
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+    out->write( '>>lt_tab2 = CORRESPONDING #( lt_tab1 ).' ).
+    lt_tab2 = CORRESPONDING #( lt_tab1 ).
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+
+**********************************************************************
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+    out->write( '>>lt_tab2 = CORRESPONDING #( BASE ( lt_tab2 ) lt_tab1 ).' ).
+    lt_tab2 = CORRESPONDING #( BASE ( lt_tab2 ) lt_tab1 ).
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+
+**********************************************************************
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+
+    MOVE-CORRESPONDING lt_tab1 TO lt_tab2 KEEPING TARGET LINES.
+    out->write( '>>MOVE-CORRESPONDING lt_tab1 to lt_tab2 KEEPING TARGET LINES.' ).
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+**********************************************************************
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+    out->write( '>>lt_tab2 = CORRESPONDING #( DEEP BASE ( lt_tab2 ) lt_tab1 ).' ).
+    lt_tab2 = CORRESPONDING #( DEEP BASE ( lt_tab2 ) lt_tab1 ).
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+
+**********************************************************************
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+
+    MOVE-CORRESPONDING lt_tab1 TO lt_tab2 EXPANDING NESTED TABLES KEEPING TARGET LINES.
+    out->write( '>>MOVE-CORRESPONDING lt_tab1 to lt_tab2 EXPANDING NESTED TABLES KEEPING TARGET LINES.' ).
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+**********************************************************************
   ENDMETHOD.
 
   METHOD clear_fill_itabs.
