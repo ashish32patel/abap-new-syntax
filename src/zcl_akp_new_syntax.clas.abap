@@ -56,6 +56,11 @@ CLASS zcl_akp_new_syntax DEFINITION
       IMPORTING
         out TYPE REF TO if_oo_adt_classrun_out.
 
+    METHODS for_loop
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+
+
   PRIVATE SECTION.
     METHODS display_structure1
       IMPORTING
@@ -104,7 +109,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    embedded_expressions( out ).
 *    move_corresponding( out ).
 *    corresponding_operator( out ).
-    let_expression( out ).
+*    let_expression( out ).
+    for_loop( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -658,6 +664,119 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     ENDDO.
 **********************************************************************
 **********************************************************************
+
+
+
+  ENDMETHOD.
+
+  METHOD for_loop.
+    "https://www.youtube.com/watch?v=u6fQBP57CpU&t=68
+*0.  Let expression in ABAP
+*1.  For:-Get some of the columns from one internal table to new internal table
+*2.  For:-Get some of lines based on some condition from one table to another table
+*3.  For:-Changing sequence of internal table some time needed to sort:-
+*4.  For:-Preparing a range table
+*5.  For:-Getting some data from third party want to add date field additional before updating in db tabe
+*6.  For:-C like for loop
+    TYPES: BEGIN OF lty_pricedetail,
+             travel_id     TYPE /dmo/travel_id,
+             agency_id     TYPE /dmo/agency_id,
+             total_price   TYPE /dmo/total_price,
+             currency_code TYPE /dmo/currency_code,
+           END OF lty_pricedetail.
+    DATA: lt_travel_pricedetails TYPE STANDARD TABLE OF lty_pricedetail.
+
+    SELECT  FROM /dmo/travel_m
+    FIELDS *
+    INTO TABLE @DATA(lt_travel)
+    UP TO 5 ROWS.
+
+    CHECK sy-subrc EQ 0.
+**********************************************************************
+*1.  For:-Get some of the columns from one internal table to new internal table
+
+    lt_travel_pricedetails = VALUE #( FOR ls_travel IN lt_travel
+                                                                  (
+                                                                   travel_id = ls_travel-travel_id
+                                                                   agency_id = ls_travel-agency_id
+                                                                   total_price = ls_travel-total_price
+                                                                   currency_code = ls_travel-currency_code
+                                                                    ) ).
+    out->write( lt_travel_pricedetails ).
+**********************************************************************
+*2.  For:-Get some of lines based on some condition from one table to another table
+    CLEAR: lt_travel_pricedetails.
+    lt_travel_pricedetails = VALUE #( FOR ls_travel IN lt_travel WHERE ( total_price < 1000 )
+                                                                  (
+                                                                    CORRESPONDING #( ls_travel )
+                                                                    ) ).
+    out->write( lt_travel_pricedetails ).
+**********************************************************************
+*4.  For:-Preparing a range table
+    DATA lt_range_agency TYPE RANGE OF /dmo/agency_id.
+
+    lt_range_agency = VALUE #( FOR ls_travel IN lt_travel
+                                            (
+                                                sign = 'I'
+                                                option = 'EQ'
+                                                low = ls_travel-agency_id
+                                            )
+                             ).
+    out->write( lt_range_agency ).
+**********************************************************************
+*5. Add few fields manually and rest using CORRESPONDING  *Important
+    TYPES: BEGIN OF lty_pricedetail_expanded,
+             travel_id     TYPE /dmo/travel_id,
+             agency_id     TYPE /dmo/agency_id,
+             total_price   TYPE /dmo/total_price,
+             currency_code TYPE /dmo/currency_code,
+             zcurrentdate  TYPE sy-datum,
+             zusername     TYPE sy-uname,
+           END OF lty_pricedetail_expanded.
+
+    DATA lt_expanded_pricedetails TYPE STANDARD TABLE OF lty_pricedetail_expanded.
+
+    lt_expanded_pricedetails = VALUE #( FOR ls_travel IN lt_travel
+                                                 LET ls_base = VALUE lty_pricedetail_expanded(
+                                                                                 zcurrentdate = sy-datum
+                                                                                 zusername = sy-uname
+                                                                                             )
+                                                 IN
+                                                        (
+                                                            CORRESPONDING #( BASE ( ls_base ) ls_travel )
+                                                        )
+
+                                      ).
+
+    out->write( lt_expanded_pricedetails ).
+**********************************************************************
+*6.  For:-C like for loop
+    TYPES: BEGIN OF ty_numbers,
+             number TYPE i,
+             square TYPE i,
+             cube   TYPE i,
+           END OF ty_numbers,
+           ty_t_numbers TYPE STANDARD TABLE OF ty_numbers WITH DEFAULT KEY.
+
+    DATA(lt_numbers) = VALUE ty_t_numbers( FOR i = 1 THEN i + 1 WHILE i LE 10
+                                            ( number = i
+                                              square = i * i
+                                              cube = i * i * i
+                                             )
+                                         ).
+    out->write( lt_numbers ).
+**********************************************************************
+
+
+
+
+
+
+
+
+
+
+
 
 
 
