@@ -52,6 +52,10 @@ CLASS zcl_akp_new_syntax DEFINITION
       IMPORTING
         out TYPE REF TO if_oo_adt_classrun_out.
 
+    METHODS let_expression
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+
   PRIVATE SECTION.
     METHODS display_structure1
       IMPORTING
@@ -99,7 +103,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    new_vs_value( out ).
 *    embedded_expressions( out ).
 *    move_corresponding( out ).
-    corresponding_operator( out ).
+*    corresponding_operator( out ).
+    let_expression( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -602,6 +607,60 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     out->write( 'tab 2:' ).
 
     out->write( lt_struct2 ).
+  ENDMETHOD.
+
+  METHOD let_expression.
+    SELECT SINGLE FROM /dmo/travel_m
+    FIELDS *
+    WHERE travel_id = '00000002'
+    INTO @DATA(ls_travel).
+**********************************************************************
+    DATA(lv_tot_price_and_disc_price) = CONV string(
+      LET
+    disc                 = 10
+    sep                  = ' , '
+    price_after_discount = ls_travel-total_price - disc
+                           IN |{ ls_travel-total_price }{ sep }{ price_after_discount }|
+  ).
+    out->write( lv_tot_price_and_disc_price ).
+**********************************************************************
+
+    DATA(lv_tot_price_and_disc_price1) = CONV string(
+      LET
+    disc                 = 20
+    sep                  = ' - '
+    price_after_discount = ls_travel-total_price - disc
+                           IN |{ ls_travel-total_price }{ sep }{ price_after_discount }|
+  ).
+
+    out->write( lv_tot_price_and_disc_price1 ).
+**********************************************************************
+    TYPES:
+      BEGIN OF date,
+        year  TYPE c LENGTH 4,
+        month TYPE c LENGTH 2,
+        day   TYPE c LENGTH 2,
+      END OF date,
+      dates TYPE TABLE OF date WITH EMPTY KEY.
+
+    FINAL(dates) = VALUE dates(
+      ( year = '2013' month = '07' day = '16' )
+      ( year = '2014' month = '08' day = '31' )
+      ( year = '2015' month = '09' day = '07' ) ).
+
+    DO lines( dates ) TIMES.
+      FINAL(isodate) = CONV string(
+        LET
+      <date>    = dates[ sy-index ]
+      separator = '-'
+                  IN <date>-year && separator && <date>-month && separator && <date>-day ).
+      out->write( isodate ).
+    ENDDO.
+**********************************************************************
+**********************************************************************
+
+
+
   ENDMETHOD.
 
 ENDCLASS.
