@@ -91,6 +91,9 @@ CLASS zcl_akp_new_syntax DEFINITION
       CHANGING
         ct_tab1 TYPE zcl_akp_new_syntax=>tt_tab1
         ct_tab2 TYPE zcl_akp_new_syntax=>tt_tab2.
+    METHODS new_line
+      IMPORTING
+        i_out TYPE REF TO if_oo_adt_classrun_out.
 
 
 ENDCLASS.
@@ -98,6 +101,8 @@ ENDCLASS.
 
 
 CLASS zcl_akp_new_syntax IMPLEMENTATION.
+
+
   METHOD if_oo_adt_classrun~main.
     "Shortcuts
     " Ctrl + 1 : Quick assist.
@@ -117,6 +122,7 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD     move_corresponding.
     "Move Corresponding
     "https://www.youtube.com/watch?v=TDHJdaf9Y0c
@@ -127,13 +133,39 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *MOVE-CORRESPONDING with Nested table with using EXPANDING NESTED TABLES
 *MOVE-CORRESPONDING with Nested table with using KEEPING TARGET LINES
 
-    "in case of itabs if any column matches than , first target itab is cleared
-    "KEEPING TARGET LINES will not clear the target itab but will append to it
-
 **Example MOVE-CORRESPONDING for Structures        DEMO_MOVE_CORRESPONDING_STRUCT
 **Example MOVE-CORRESPONDING for Internal Tables   DEMO_MOVE_CORRESPONDING_STRUCT
 **Example Component Operator for Structures        DEMO_CORRESPONDING_STRUCT
 **Example Component Operator for Internal Tables   DEMO_CORRESPONDING_ITAB
+
+*    TYPES:
+*      BEGIN OF ty_line_struct1,
+*        col1 TYPE char3,
+*        col2 TYPE char3,
+*      END OF ty_line_struct1,
+*
+*      BEGIN OF ty_line_struct2,
+*        col2 TYPE char3,
+*        col3 TYPE char3,
+*      END OF ty_line_struct2,
+*      BEGIN OF ty_struct1,
+*        col1 TYPE char3,                                              "elementary components,
+*        col2 TYPE char3,
+*        tab  TYPE STANDARD TABLE OF ty_line_struct1 WITH EMPTY KEY, "tabular component
+*      END OF ty_struct1,
+*
+*      BEGIN OF ty_struct2,
+*        col2 TYPE char3,
+*        tab  TYPE STANDARD TABLE OF ty_line_struct2 WITH EMPTY KEY,
+*        col4 TYPE char3,
+*      END OF ty_struct2.
+*
+*    TYPES: tt_tab1 TYPE STANDARD TABLE OF ty_struct1 WITH EMPTY KEY,
+*           tt_tab2 TYPE STANDARD TABLE OF ty_struct2 WITH EMPTY KEY.
+
+*Important
+    "In case of itabs if any column matches than , first target itab is cleared
+    "KEEPING TARGET LINES will not clear the target itab but will append to it
 
     DATA:
       ls_struct1 TYPE ty_struct1,
@@ -199,45 +231,58 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     display_tab2( it_tab2 = lt_tab2 out = out ).
   ENDMETHOD.
 
+
   METHOD corresponding_operator.
+    "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "compare with the operations in move_corresponding.
+
+    "To Do:
+        "1. MAPPING in Corresponding.
+        "2. EXCEPT  in Corresponding.
+        "3. RAP specific Corresponding.
     DATA:
       ls_struct1 TYPE ty_struct1,
       ls_struct2 TYPE ty_struct2.
 
 
-*    clear_fill_structures(
-*      CHANGING
-*        cs_struct2 = ls_struct2
-*        cs_struct1 = ls_struct1 ).
-*
-*    me->display_structure1( out = out is_struct1 = ls_struct1 ).
-*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
-***********************************************************************
-*    out->write( '>> ls_struct2 = CORRESPONDING #( ls_struct1 ).' ).
-*    out->write( |Note: It's not same as MOVE-CORRESPONDING notice COL4 for difference \n    as it target stucture is first overridden| ).
-*
-*    ls_struct2 = CORRESPONDING #( ls_struct1 ).
-*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
-***********************************************************************
-*    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
-*    out->write( '>> ls_struct2 = CORRESPONDING #( BASE ( ls_struct2 ) ls_struct1 ).' ).
-*    out->write( |Note: It's same as MOVE-CORRESPONDING| ).
-*
-*    ls_struct2 = CORRESPONDING #( BASE ( ls_struct2 ) ls_struct1 ).
-*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
-***********************************************************************
-*    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
-*    out->write( 'MOVE-CORRESPONDING ls_struct1 to ls_struct2 EXPANDING NESTED TABLES.' ).
-*
-*    MOVE-CORRESPONDING ls_struct1 TO ls_struct2 EXPANDING NESTED TABLES.
-*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
-***********************************************************************
-*    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
-*    out->write( 'ls_struct2 = CORRESPONDING #( DEEP BASE ( ls_struct2 ) ls_struct1 ).' ).
-*
-*    ls_struct2 = CORRESPONDING #( DEEP BASE ( ls_struct2 ) ls_struct1 ).
-*    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+    clear_fill_structures(
+      CHANGING
+        cs_struct2 = ls_struct2
+        cs_struct1 = ls_struct1 ).
+
+    me->display_structure1( out = out is_struct1 = ls_struct1 ).
+    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+**********************************************************************
+    new_line( out ).
+    out->write( '>> ls_struct2 = CORRESPONDING #( ls_struct1 ).' ).
+    new_line( out ).
+    out->write( |Note: It's not same as MOVE-CORRESPONDING notice below COL4 for difference \n    as it's target stucture is first overridden| ).
+
+    ls_struct2 = CORRESPONDING #( ls_struct1 ).
+    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+**********************************************************************
+    new_line( out ).
+    new_line( out ).
+    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
+    out->write( '>> ls_struct2 = CORRESPONDING #( BASE ( ls_struct2 ) ls_struct1 ).' ).
+    out->write( |Note: It's same as MOVE-CORRESPONDING| ).
+
+    ls_struct2 = CORRESPONDING #( BASE ( ls_struct2 ) ls_struct1 ).
+    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+**********************************************************************
+    new_line( out ).
+    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
+    out->write( 'MOVE-CORRESPONDING ls_struct1 to ls_struct2 EXPANDING NESTED TABLES.' ).
+
+    MOVE-CORRESPONDING ls_struct1 TO ls_struct2 EXPANDING NESTED TABLES.
+    me->display_structure2( out = out is_struct2 = ls_struct2 ).
+**********************************************************************
+    new_line( out ).
+    clear_fill_structures( CHANGING cs_struct2 = ls_struct2 cs_struct1 = ls_struct1 ).
+    out->write( 'ls_struct2 = CORRESPONDING #( DEEP BASE ( ls_struct2 ) ls_struct1 ).' ).
+
+    ls_struct2 = CORRESPONDING #( DEEP BASE ( ls_struct2 ) ls_struct1 ).
+    me->display_structure2( out = out is_struct2 = ls_struct2 ).
 **********************************************************************
     DATA: lt_tab1 TYPE  tt_tab1,
           lt_tab2 TYPE tt_tab2.
@@ -248,37 +293,65 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     display_tab1( it_tab1 = lt_tab1 out = out ).
     display_tab2( it_tab2 = lt_tab2 out = out ).
 **********************************************************************
+    new_line( out ).
     clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
     out->write( '>>lt_tab2 = CORRESPONDING #( lt_tab1 ).' ).
     lt_tab2 = CORRESPONDING #( lt_tab1 ).
     display_tab2( it_tab2 = lt_tab2 out = out ).
 
 **********************************************************************
+    new_line( out ).
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+    out->write( '>>MOVE-CORRESPONDING lt_tab1 to lt_tab2.' ).
+    MOVE-CORRESPONDING lt_tab1 TO lt_tab2.
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+**********************************************************************
+    new_line( out ).
+    new_line( out ).
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+    lt_tab2 = CORRESPONDING #( DEEP lt_tab1 ).
+    out->write( '>>lt_tab2 = CORRESPONDING #( DEEP lt_tab1 ).' ).
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+**********************************************************************
+    new_line( out ).
+    clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
+    MOVE-CORRESPONDING lt_tab1 TO lt_tab2 EXPANDING NESTED TABLES.
+    out->write( '>>MOVE-CORRESPONDING lt_tab1 to lt_tab2 EXPANDING NESTED TABLES.' ).
+    display_tab2( it_tab2 = lt_tab2 out = out ).
+**********************************************************************
+    new_line( out ).
+    new_line( out ).
     clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
     out->write( '>>lt_tab2 = CORRESPONDING #( BASE ( lt_tab2 ) lt_tab1 ).' ).
     lt_tab2 = CORRESPONDING #( BASE ( lt_tab2 ) lt_tab1 ).
     display_tab2( it_tab2 = lt_tab2 out = out ).
 
 **********************************************************************
+    new_line( out ).
     clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
 
     MOVE-CORRESPONDING lt_tab1 TO lt_tab2 KEEPING TARGET LINES.
     out->write( '>>MOVE-CORRESPONDING lt_tab1 to lt_tab2 KEEPING TARGET LINES.' ).
     display_tab2( it_tab2 = lt_tab2 out = out ).
 **********************************************************************
+    new_line( out ).
+    new_line( out ).
     clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
     out->write( '>>lt_tab2 = CORRESPONDING #( DEEP BASE ( lt_tab2 ) lt_tab1 ).' ).
     lt_tab2 = CORRESPONDING #( DEEP BASE ( lt_tab2 ) lt_tab1 ).
     display_tab2( it_tab2 = lt_tab2 out = out ).
 
 **********************************************************************
+    new_line( out ).
     clear_fill_itabs( CHANGING ct_tab1 = lt_tab1 ct_tab2 = lt_tab2 ).
 
     MOVE-CORRESPONDING lt_tab1 TO lt_tab2 EXPANDING NESTED TABLES KEEPING TARGET LINES.
     out->write( '>>MOVE-CORRESPONDING lt_tab1 to lt_tab2 EXPANDING NESTED TABLES KEEPING TARGET LINES.' ).
     display_tab2( it_tab2 = lt_tab2 out = out ).
-**********************************************************************
+*********************************************************************
+
   ENDMETHOD.
+
 
   METHOD clear_fill_itabs.
     CLEAR: ct_tab1, ct_tab2.
@@ -326,7 +399,6 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
   ENDMETHOD.
 
 
-
   METHOD clear_fill_structures.
     CLEAR: cs_struct1,cs_struct2.
 
@@ -352,9 +424,6 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
   ENDMETHOD.
 
 
-
-
-
   METHOD embedded_expressions.
 
     "Embedded Expressions
@@ -370,9 +439,10 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     out->write( strlen( `Akp  ` ) ).  "String Literals
 
     DATA: lv_matnr TYPE matnr VALUE '000000000123'.
-    out->write( 'alpha conversions:' ).
+    out->write( 'Alpha Conversions:' ).
     out->write( |{ lv_matnr }| ).
     out->write( |{ lv_matnr ALPHA = OUT }| ).
+    new_line( out ).
 
     out->write( 'DATE/TIME/NUM conversions:' ).
     out->write( |{ sy-datum }| ).
@@ -380,7 +450,7 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 
     out->write( |{ sy-uzeit }| ).
     out->write( |{ sy-uzeit TIME = USER }| ).
-
+    new_line( out ).
 
     DATA(lv_num) = VALUE int4( ).
     lv_num = 13534.
@@ -392,6 +462,13 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     "\t - control character adds a tab
 
   ENDMETHOD.
+
+  METHOD new_line.
+
+    i_out->write( |\n| ).
+
+  ENDMETHOD.
+
 
 
 
@@ -439,7 +516,6 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
   ENDMETHOD.
 
 
-
   METHOD fieldSymbol_vs_dataReference.
 
     "https://www.youtube.com/watch?v=T39CPoESgqQ
@@ -463,7 +539,6 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
   ENDMETHOD.
 
 
-
   METHOD inline_declaration.
 
 *    Inline declaration.   --https://www.youtube.com/watch?v=AFPVxzghIUs
@@ -485,7 +560,6 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     out->write( lt_travel ).
 
   ENDMETHOD.
-
 
 
   METHOD display_structure1.
@@ -520,6 +594,7 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD display_tab1.
     TYPES:
       BEGIN OF ts_dispaly_table1,
@@ -551,6 +626,7 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     out->write( lt_struct1 ).
   ENDMETHOD.
 
+
   METHOD display_structure2.
     TYPES:
       BEGIN OF ts_dispaly_table2,
@@ -580,7 +656,6 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     out->write( lt_struct2 ).
 
   ENDMETHOD.
-
 
 
   METHOD display_tab2.
@@ -615,7 +690,9 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     out->write( lt_struct2 ).
   ENDMETHOD.
 
+
   METHOD let_expression.
+    "https://www.youtube.com/watch?v=YfK-2_a19bI
     SELECT SINGLE FROM /dmo/travel_m
     FIELDS *
     WHERE travel_id = '00000002'
@@ -663,11 +740,33 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
       out->write( isodate ).
     ENDDO.
 **********************************************************************
+    out->write( '----' ).
+    TYPES:
+      BEGIN OF struc,
+        col1 TYPE i,
+        col2 TYPE i,
+      END OF struc.
+
+    FINAL(t) = sy-uzeit.
+    FINAL(rnd) = cl_abap_random_int=>create(
+      seed = CONV i( t ) min = 1 max = 10 ).
+
+    DO 5 TIMES.
+      FINAL(struc) = VALUE struc(
+        LET x = rnd->get_next( )
+            y = x * x
+            z = sy-index * 1000 IN col1 = x + z
+                                   col2 = y + z ).
+      out->write( struc ).
+      new_line( out ).
+    ENDDO.
+
 **********************************************************************
 
 
 
   ENDMETHOD.
+
 
   METHOD for_loop.
     "https://www.youtube.com/watch?v=u6fQBP57CpU&t=68
@@ -694,7 +793,7 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     CHECK sy-subrc EQ 0.
 **********************************************************************
 *1.  For:-Get some of the columns from one internal table to new internal table
-
+    out->write( |*1. For:-Get some of the columns from one internal table to new internal table| ).
     lt_travel_pricedetails = VALUE #( FOR ls_travel IN lt_travel
                                                                   (
                                                                    travel_id = ls_travel-travel_id
@@ -704,7 +803,19 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
                                                                     ) ).
     out->write( lt_travel_pricedetails ).
 **********************************************************************
+*   Alternate syntax for above case 1
+    out->write( |> Alternate syntax for above case 1| ).
+    CLEAR: lt_travel_pricedetails.
+    lt_travel_pricedetails = VALUE #( FOR ls_travel IN lt_travel (
+                                                            CORRESPONDING #( ls_travel )
+                                                                 )
+                                    ).
+    out->write( lt_travel_pricedetails ).
+
+**********************************************************************
 *2.  For:-Get some of lines based on some condition from one table to another table
+    new_line( out ).
+    out->write( |*2.  For:-Get some of lines based on some condition from one table to another table| ).
     CLEAR: lt_travel_pricedetails.
     lt_travel_pricedetails = VALUE #( FOR ls_travel IN lt_travel WHERE ( total_price < 1000 )
                                                                   (
@@ -713,6 +824,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     out->write( lt_travel_pricedetails ).
 **********************************************************************
 *4.  For:-Preparing a range table
+    new_line( out ).
+    out->write( |*4.  For:-Preparing a range table| ).
     DATA lt_range_agency TYPE RANGE OF /dmo/agency_id.
 
     lt_range_agency = VALUE #( FOR ls_travel IN lt_travel
@@ -724,7 +837,9 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
                              ).
     out->write( lt_range_agency ).
 **********************************************************************
-*5. Add few fields manually and rest using CORRESPONDING  *Important
+*5.1 Add few fields manually and rest using CORRESPONDING
+    new_line( out ).
+    out->write( |*5.1 Add few fields manually and rest using CORRESPONDING| ).
     TYPES: BEGIN OF lty_pricedetail_expanded,
              travel_id     TYPE /dmo/travel_id,
              agency_id     TYPE /dmo/agency_id,
@@ -740,6 +855,7 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
                                                  LET ls_base = VALUE lty_pricedetail_expanded(
                                                                                  zcurrentdate = sy-datum
                                                                                  zusername = sy-uname
+*                                                                                 currency_code = 'INR'  This case is not working need to check
                                                                                              )
                                                  IN
                                                         (
@@ -750,7 +866,26 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 
     out->write( lt_expanded_pricedetails ).
 **********************************************************************
+*5.2 Add few fields manually and rest using CORRESPONDING -Fixes above issue *Important
+    new_line( out ).
+    out->write( |*Fixes above issue *Important| ).
+    out->write( |*5.2 Add few fields manually and rest using CORRESPONDING | ).
+    lt_expanded_pricedetails = VALUE #( FOR ls_travel IN lt_travel
+                                            LET ls_base = VALUE lty_pricedetail_expanded(
+                                                                                         zcurrentdate = sy-datum
+                                                                                         zusername = sy-uname
+                                                                                         currency_code = 'INR'
+                                                                                        )
+                                            IN (
+                                                   CORRESPONDING #( BASE ( ls_base ) ls_travel EXCEPT currency_code )
+                                                   "not needed to put z field in exception list as they are not present in lt_travel
+                                                )
+                                        ).
+    out->write( lt_expanded_pricedetails ).
+**********************************************************************
 *6.  For:-C like for loop
+    new_line( out ).
+    out->write( |*6.  For:-C like for loop| ).
     TYPES: BEGIN OF ty_numbers,
              number TYPE i,
              square TYPE i,
@@ -767,19 +902,5 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     out->write( lt_numbers ).
 **********************************************************************
 
-
-
-
-
-
-
-
-
-
-
-
-
-
   ENDMETHOD.
-
 ENDCLASS.
