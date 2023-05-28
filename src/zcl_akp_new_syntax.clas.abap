@@ -60,6 +60,9 @@ CLASS zcl_akp_new_syntax DEFINITION
       IMPORTING
         out TYPE REF TO if_oo_adt_classrun_out.
 
+    METHODS reduce_operator
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
 
   PRIVATE SECTION.
     METHODS display_structure1
@@ -115,7 +118,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    move_corresponding( out ).
 *    corresponding_operator( out ).
 *    let_expression( out ).
-    for_loop( out ).
+*    for_loop( out ).
+    reduce_operator( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -237,9 +241,9 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     "compare with the operations in move_corresponding.
 
     "To Do:
-        "1. MAPPING in Corresponding.
-        "2. EXCEPT  in Corresponding.
-        "3. RAP specific Corresponding.
+    "1. MAPPING in Corresponding.
+    "2. EXCEPT  in Corresponding.
+    "3. RAP specific Corresponding.
     DATA:
       ls_struct1 TYPE ty_struct1,
       ls_struct2 TYPE ty_struct2.
@@ -903,4 +907,125 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 **********************************************************************
 
   ENDMETHOD.
+  METHOD reduce_operator.
+    "https://www.youtube.com/watch?v=LMFpX3LNdgU&t=19s
+
+    TYPES: BEGIN OF ty_final,
+             carrier_id          TYPE /dmo/carrier-carrier_id,
+             name                TYPE /dmo/carrier-name,
+             total_price         TYPE /dmo/flight-price,
+             flight_date_options TYPE string,
+           END OF ty_final.
+    TYPES: BEGIN OF ty_calc_fields,
+             total_price         TYPE /dmo/flight-price,
+             flight_date_options TYPE string,
+           END OF ty_calc_fields.
+    DATA: lt_final TYPE STANDARD TABLE OF ty_final.
+
+    SELECT FROM /dmo/carrier
+    FIELDS carrier_id , name
+    INTO TABLE @DATA(lt_carriers).
+
+    CHECK sy-subrc EQ 0.
+
+    SELECT FROM /dmo/flight
+    FIELDS carrier_id, connection_id, flight_date, price
+    FOR ALL ENTRIES IN @lt_carriers
+    WHERE carrier_id = @lt_carriers-carrier_id
+    INTO TABLE @DATA(lt_flights).
+
+    CHECK sy-subrc EQ 0.
+
+    "Prepare a final table combining data from carrier and flights data.
+    "show all flight dates for carries separated by '/'
+    "show total of all flights prices for each carrier.
+    LOOP AT lt_carriers ASSIGNING FIELD-SYMBOL(<ls_carrier>).
+      APPEND INITIAL LINE TO lt_final ASSIGNING FIELD-SYMBOL(<ls_final>).
+
+      <ls_final>-carrier_id = <ls_carrier>-carrier_id.
+      <ls_final>-name = <ls_carrier>-name.
+
+
+*      <ls_final>-total_price = REDUCE #( INIT tot_price = VALUE /dmo/flight_price(  )
+*                                            FOR ls_flight IN lt_flights WHERE ( carrier_id = <ls_carrier>-carrier_id )
+*                                            NEXT tot_price = tot_price + ls_flight-price
+*                                        ).
+*
+*      <ls_final>-flight_date_options = REDUCE #( INIT lv_all_flight_dates TYPE string
+*                                                      sep = ''
+*                                                   FOR ls_flight IN lt_flights WHERE ( carrier_id = <ls_carrier>-carrier_id )
+*                                                  NEXT lv_all_flight_dates = |{ lv_all_flight_dates }{ sep }{ ls_flight-flight_date  }|
+*                                                       sep = '/ '
+*                                                ).
+
+      "We can also calculate both of the above two fields together in 1 iteration with a helper type.
+      DATA(ls_calc_fileds) = REDUCE ty_calc_fields( INIT wa_calc_fields TYPE ty_calc_fields
+                                                         sep = ''
+                                                   FOR ls_flight IN lt_flights WHERE ( carrier_id = <ls_carrier>-carrier_id )
+
+                                                   NEXT wa_calc_fields-total_price = wa_calc_fields-total_price + ls_flight-price
+                                                        wa_calc_fields-flight_date_options = |{ wa_calc_fields-flight_date_options }{ sep }{ ls_flight-flight_date  }|
+                                                        sep = '/ '
+
+                                                    ).
+
+      <ls_final>-total_price = ls_calc_fileds-total_price.
+      <ls_final>-flight_date_options = ls_calc_fileds-flight_date_options.
+
+    ENDLOOP.
+
+    out->write( lt_final ).
+
+    "IMP Points for REDUCE operator
+
+* The variables or field symbols declared after INIT can only be used after NEXT.
+* INIT is mandatory, it creates local variable, and at least one variable is mandatory
+* The first variable after INIT determines the result of the REDUCE expression and the data type must be convertible to the result type
+* All other variables declared after the first variable of INIT are optional helper fields which can also be modified in the NEXT section.
+* We can also use LET in REDUCE, however these variable can't be modified in the NEXT section, only can be used in NEXT section.
+* At least one iteration expression must then be specified using FOR conditional iterations on table iterations
+* NEXT that are executed for every iteration of the last FOR expression
+
+
+    "We can also use LET in REDUCE as below, however these variable can't be modified in NEXT
+*      <ls_final>-flight_date_options = REDUCE #(   LET sep = '*' IN
+*                                                   INIT lv_all_flight_dates TYPE string
+*                                                   FOR ls_flight IN lt_flights WHERE ( carrier_id = <ls_carrier>-carrier_id )
+*                                                  NEXT lv_all_flight_dates = |{ ls_flight-flight_date }{ sep }{ lv_all_flight_dates }|
+*
+*                                                ).
+
+
+***********************************************************************************
+*    2nd example
+    new_line( out ).
+    out->write( 'Concatenation without THEN , default taken as n+1' ).
+
+    out->write( REDUCE #( INIT text = `Count Up:`
+                          FOR n = 1 UNTIL n > 10    "helps to read as UNTIL AND UNLESS
+                          NEXT text = |{ text } { n }|
+                        ) ).
+
+    new_line( out ).
+    out->write( 'Concatenation with THEN' ).
+
+    out->write( REDUCE #( INIT text = `Count Down:`
+                          FOR n = 10 THEN n - 1 WHILE n >= 0
+                          NEXT text = |{ text } { n }|
+                ) ).
+
+    new_line( out ).
+    out->write( 'Non arithmetic expression' ).
+
+    out->write( REDUCE #( INIT text = ``
+                          FOR t = `x` THEN |{ t }y| WHILE strlen( t ) <= 5
+                          NEXT text = |{ text }{ t } |
+
+    ) ).
+
+
+
+
+  ENDMETHOD.
+
 ENDCLASS.
