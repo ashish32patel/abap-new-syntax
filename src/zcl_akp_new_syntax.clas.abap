@@ -64,6 +64,10 @@ CLASS zcl_akp_new_syntax DEFINITION
       IMPORTING
         out TYPE REF TO if_oo_adt_classrun_out.
 
+    METHODS group_by
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+
   PRIVATE SECTION.
     METHODS display_structure1
       IMPORTING
@@ -119,7 +123,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    corresponding_operator( out ).
 *    let_expression( out ).
 *    for_loop( out ).
-    reduce_operator( out ).
+*    reduce_operator( out ).
+    group_by( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -972,6 +977,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
       <ls_final>-total_price = ls_calc_fileds-total_price.
       <ls_final>-flight_date_options = ls_calc_fileds-flight_date_options.
 
+      CLEAR ls_calc_fileds.
+
     ENDLOOP.
 
     out->write( lt_final ).
@@ -1023,6 +1030,138 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 
     ) ).
 
+
+
+
+  ENDMETHOD.
+
+  METHOD group_by.
+    TYPES: BEGIN OF ty_flight,
+             carrier_id    TYPE /dmo/flight-carrier_id,
+             connection_id TYPE /dmo/flight-connection_id,
+             flight_date   TYPE /dmo/flight-flight_date,
+           END OF ty_flight.
+    TYPES: BEGIN OF ty_flight_1,
+             carrier_id    TYPE /dmo/flight-carrier_id,
+             connection_id TYPE /dmo/flight-connection_id,
+             flight_date   TYPE /dmo/flight-flight_date,
+             count         TYPE i,
+             index         TYPE i,
+           END OF ty_flight_1.
+    DATA: lt_flights     TYPE STANDARD TABLE OF ty_flight,
+          lt_flights_grp TYPE STANDARD TABLE OF ty_flight.
+
+    "https://www.youtube.com/watch?v=95a5YsLnhvs&t=44s
+
+    SELECT
+    FROM /dmo/flight
+    FIELDS carrier_id, connection_id, flight_date
+    INTO TABLE @lt_flights
+    UP TO 9 ROWS.
+
+***********************************************************************************************
+    out->write( |======== Group By - Representative Binding ========| ).
+***********************************************************************************************
+    new_line( out ).
+    out->write( '>This field symbol represents the whole group of records,').
+    out->write( '>however here it will just print the first row of each group.' ).
+    new_line( out ).
+
+    LOOP AT lt_flights ASSIGNING FIELD-SYMBOL(<lfs_flight>) "Representative Binding
+                                    GROUP BY ( carrier_id = <lfs_flight>-carrier_id
+                                               connection_id = <lfs_flight>-connection_id ).
+
+      out->write( <lfs_flight> ).  "This field symbol represents the whole group of records, however here it will just print the first row of each group.
+
+    ENDLOOP.
+
+***********************************************************************************************
+    new_line( out ).
+    out->write( '>Here using LOOP AT GROUP printing each line of group' ).
+    new_line( out ).
+
+    LOOP AT lt_flights ASSIGNING FIELD-SYMBOL(<lfs_flight1>) "Representative Binding
+                                    GROUP BY ( carrier_id = <lfs_flight1>-carrier_id
+                                               connection_id = <lfs_flight1>-connection_id ).
+      CLEAR lt_flights_grp.
+      LOOP AT GROUP <lfs_flight1> ASSIGNING FIELD-SYMBOL(<lfs_grp_entry>).
+
+        lt_flights_grp = VALUE #( BASE lt_flights_grp ( <lfs_grp_entry> ) ).
+
+      ENDLOOP.
+
+      out->write( lt_flights_grp ).
+
+    ENDLOOP.
+***********************************************************************************************
+    "https://www.youtube.com/watch?v=2oQcaPHP5MU
+    new_line( out ).
+    out->write( |======== Group By - Group key Binding ========| ).
+***********************************************************************************************
+
+
+    LOOP AT lt_flights ASSIGNING FIELD-SYMBOL(<lfs_flight2>)
+                                    GROUP BY ( carrier_id = <lfs_flight2>-carrier_id
+                                               connection_id = <lfs_flight2>-connection_id )
+                                        ASSIGNING FIELD-SYMBOL(<lt_grp>). "Group Key binding
+      CLEAR lt_flights_grp.
+
+*      LOOP AT GROUP <lt_grp> ASSIGNING FIELD-SYMBOL(<lfs_grp_entry1>).
+*        lt_flights_grp = VALUE #( BASE lt_flights_grp ( <lfs_grp_entry1> ) ).
+*      ENDLOOP.
+
+      "Above LOOP AT GROUP can be replaced by below , FOR..IN GROUP
+      lt_flights_grp = VALUE #( FOR <grp_entry> IN GROUP <lt_grp> ( CORRESPONDING #( <grp_entry> ) ) ).
+
+      out->write( lt_flights_grp ).
+
+    ENDLOOP.
+***********************************************************************************************
+    new_line( out ).
+    out->write( |>Variations in Group Key binding| ).
+    new_line( out ).
+
+    DATA lt_flights_1 TYPE STANDARD TABLE OF ty_flight_1.
+    lt_flights_1 = CORRESPONDING #( lt_flights ).
+
+    LOOP AT lt_flights_1 ASSIGNING FIELD-SYMBOL(<lfs_flight3>)
+                                    GROUP BY ( carrier_id = <lfs_flight3>-carrier_id
+                                               connection_id = <lfs_flight3>-connection_id
+                                               count = GROUP SIZE
+                                               index = GROUP INDEX )
+                                               DESCENDING
+*                                        WITHOUT MEMBERS " we can use only the group keys in <lt_grp>, hence it will be faster.
+                                        ASSIGNING FIELD-SYMBOL(<lt_grp1>). "Group Key binding
+      out->write( <lt_grp1> ).
+
+    ENDLOOP.
+***********************************************************************************************
+    "https://www.youtube.com/watch?v=crHfXsHhwp0
+    new_line( out ).
+    out->write( |Loop at GROUP BY - Real time example| ).
+    "Typical use is insteady of AT END , AT BEGIN  we can use LOOP AT GROUP BY.
+    "for example for calulation of item total price ,
+***********************************************************************************************
+    TYPES zbapiret2 TYPE STANDARD TABLE OF bapiret2 WITH DEFAULT KEY.
+    DATA(lt_return) = VALUE Zbapiret2(
+                                ( type = 'A' message = 'message type A' )
+                                ( type = 'W' message = 'message type W' )
+                                ( type = 'I' message = 'message type I' )
+                                ( type = 'E' message = 'message type E' )
+                                ( type = 'S' message = 'message type S' )
+                                ( type = 'X' message = 'message type X' )
+
+        ).
+
+    LOOP AT lt_return INTO DATA(ls_return)
+            GROUP BY translate( val = ls_return-type from = 'AXEIWS' to = '012345')
+            ASCENDING.
+
+      DATA(lv_message) = ls_return-message.
+      EXIT.
+    ENDLOOP.
+    "This can also be done with for with where. interesting to check.
+    out->write( lv_message  ).
 
 
 
