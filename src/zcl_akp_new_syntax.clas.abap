@@ -68,6 +68,10 @@ CLASS zcl_akp_new_syntax DEFINITION
       IMPORTING
         out TYPE REF TO if_oo_adt_classrun_out.
 
+    METHODS filter_operator
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+
   PRIVATE SECTION.
     METHODS display_structure1
       IMPORTING
@@ -124,7 +128,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    let_expression( out ).
 *    for_loop( out ).
 *    reduce_operator( out ).
-    group_by( out ).
+*    group_by( out ).
+    filter_operator( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -1165,6 +1170,93 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 
 
 
+  ENDMETHOD.
+
+  METHOD filter_operator.
+    "https://www.youtube.com/watch?v=7ji98-IFPQc&t=194s
+*Below are some points to keep in mind when using the FILTER operator
+
+*-> The internal table on which FILTER operator is used must have at least one sorted key or one hash key used for access.
+
+*->The row type of main internal table and result internal table do NOT have to be identical.
+
+*->The Boolean operators NOT, OR, and EQUIV cannot be used in the WHERE condition.
+
+*->Table - filtering can also be performed using a table comprehension or a table reduction
+*  with an iteration expression for table iterations with FOR.
+*  The operator FILTER provides a shortened format for this special case and is more efficient to execute.
+
+*->A table filter constructs the result row by row. If the result contains almost all row in the source table,
+*  this method can be slower than copying the source table and deleting the surplus rows from the target table.
+    TYPES: BEGIN OF ty_flight,
+             carrier_id    TYPE /dmo/flight-carrier_id,
+             connection_id TYPE /dmo/flight-connection_id,
+             flight_date   TYPE /dmo/flight-flight_date,
+           END OF ty_flight,
+           ty_t_flight TYPE STANDARD TABLE OF ty_flight WITH DEFAULT KEY,
+           BEGIN OF ty_carrier,
+             carrier_id    TYPE /dmo/carrier-carrier_id,
+             currency_code TYPE /dmo/carrier-currency_code,
+           END OF ty_carrier.
+*    DATA: lt_usd_carriers TYPE STANDARD TABLE OF ty_carrier.
+    DATA: lt_usd_carriers TYPE SORTED TABLE OF ty_carrier WITH UNIQUE KEY carrier_id.
+
+    DATA: lt_flights        TYPE STANDARD TABLE OF ty_flight WITH NON-UNIQUE SORTED KEY car COMPONENTS carrier_id,
+          lt_flights_sorted TYPE SORTED TABLE OF ty_flight WITH NON-UNIQUE KEY carrier_id.
+
+    SELECT
+    FROM /dmo/flight
+    FIELDS carrier_id, connection_id, flight_date
+    WHERE carrier_id IN ( 'SQ', 'AA', 'AZ' )
+    INTO TABLE @lt_flights.
+
+    CHECK sy-subrc = 0.
+    out->write( |Original data| ).
+    out->write( lt_flights ).
+**************************************************************************************************************
+    new_line( out ).
+    out->write( |Filterd Data using Key| ).
+    DATA(lt_flights_az) = FILTER ty_t_flight( lt_flights USING KEY car WHERE carrier_id = CONV #( 'AZ' )  ).
+    out->write( lt_flights_az ).
+
+**************************************************************************************************************
+    lt_flights_sorted = lt_flights.
+
+    new_line( out ).
+    out->write( |Filterd Data on sorted internal table| ).
+
+    DATA(lt_flights_aa) = FILTER ty_t_flight( lt_flights_sorted  WHERE carrier_id = CONV #( 'AA' )  ).
+    out->write( lt_flights_aa ).
+
+**************************************************************************************************************
+    new_line( out ).
+    out->write( |Filterd Data except 'AA'| ).
+    lt_flights_sorted = lt_flights.
+
+    DATA(lt_flights_except_aa) = FILTER ty_t_flight( lt_flights_sorted EXCEPT WHERE carrier_id = CONV #( 'AA' )  ).
+    out->write( lt_flights_except_aa ).
+
+**************************************************************************************************************
+    "https://www.youtube.com/watch?v=MazedVvQYBg
+    "Real time example - FOR all entries equivalent for internal tables using FILTER operator.
+**************************************************************************************************************
+    new_line( out ).
+
+    SELECT FROM /dmo/carrier
+    FIELDS carrier_id, currency_code
+    WHERE currency_code = 'EUR'
+    INTO TABLE @lt_usd_carriers.
+
+    out->write( |*Important: FOR ALL ENTRIES equivalent for internal tables using FILTER operator.| ).
+    out->write( |DATA(lt_filterd_flights) = FILTER ty_t_flight( lt_flights_sorted IN lt_usd_carriers WHERE carrier_id = carrier_id ).| ).
+    "We want to now show only those flights, whose carriers have EUR as currency.
+    DATA(lt_filterd_flights) = FILTER ty_t_flight( lt_flights_sorted IN lt_usd_carriers WHERE carrier_id = carrier_id ).
+
+
+    out->write( lt_filterd_flights ).
+*    data(lt_filterd_flights) = FILTER ty_t_flight( lt_flights_sorted USING KEY primary_key   "for standard tables we can use primary_key
+*                                                      IN lt_usd_carriers WHERE carrier_id = carrier_id ).
+**************************************************************************************************************
   ENDMETHOD.
 
 ENDCLASS.
