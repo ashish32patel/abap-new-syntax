@@ -72,6 +72,9 @@ CLASS zcl_akp_new_syntax DEFINITION
       IMPORTING
         out TYPE REF TO if_oo_adt_classrun_out.
 
+    METHODS open_sql_enhancements
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
   PRIVATE SECTION.
     METHODS display_structure1
       IMPORTING
@@ -105,6 +108,9 @@ CLASS zcl_akp_new_syntax DEFINITION
     METHODS new_line
       IMPORTING
         i_out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS notes
+      IMPORTING
+        i_out TYPE REF TO if_oo_adt_classrun_out.
 
 
 ENDCLASS.
@@ -129,7 +135,8 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    for_loop( out ).
 *    reduce_operator( out ).
 *    group_by( out ).
-    filter_operator( out ).
+*    filter_operator( out ).
+    open_sql_enhancements( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -1258,5 +1265,250 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *                                                      IN lt_usd_carriers WHERE carrier_id = carrier_id ).
 **************************************************************************************************************
   ENDMETHOD.
+
+  METHOD notes.
+    "Shortcuts
+    " Ctrl + 1 : Quick assist.
+    " Ctrl + Alt + DownArrow : Create a copy of the current line
+    " Ctrl + Shift + X : UPPER CASE
+    " Ctrl + Shift + Y : loswe case
+
+
+    "T_Codes:
+    "DWDM - Development workbench demos.
+
+
+
+  ENDMETHOD.
+
+  METHOD open_sql_enhancements.
+**************************************************************************************************************
+*Case statement in Select - Open SQL Enhancement
+**************************************************************************************************************
+
+    out->write( |>Case statement in Select - Open SQL Enhancement| ).
+    new_line( out ).
+
+    SELECT FROM /dmo/flight
+    FIELDS carrier_id,
+        CASE currency_code       "Simple case statement
+            WHEN 'USD' THEN 'US Dollar'
+            WHEN 'SGD' THEN 'Singapore Dollar'
+            WHEN 'EUR' THEN 'Euro'
+            ELSE 'Other currency'
+            END AS currency_description,
+        price,
+        CASE                     "Complex case statement
+            WHEN price > 2500 THEN 'Costly'
+            WHEN ( price > 500 AND price < 2500 ) THEN 'Reasonable'
+            ELSE 'Cheap'
+            END AS Flight_Price,
+
+            CASE                      "Complex case statement
+            WHEN  currency_code EQ 'USD' THEN
+                   CASE
+                    WHEN price > 2500 THEN 'Costly'
+                    WHEN ( price > 500 AND price < 2500 ) THEN 'Reasonable'
+                    ELSE 'Cheap' END
+            WHEN  currency_code EQ 'EUR' THEN
+                   CASE
+                    WHEN price > 1500 THEN 'Costly'
+                    WHEN ( price > 400 AND price < 1500 ) THEN 'Reasonable'
+                    ELSE 'Cheap' END
+            ELSE
+                   CASE
+                    WHEN price > 2000 THEN 'Costly'
+                    WHEN ( price > 1000 AND price < 2000 ) THEN 'Reasonable'
+                    ELSE 'Cheap' END
+            END AS currency_adjusted_flight_price
+
+    INTO TABLE @DATA(lt_flights).
+
+    CHECK sy-subrc EQ 0.
+
+    out->write( lt_flights ).
+**************************************************************************************************************
+*COALESCE function in Select - Open SQL Enhancement
+**************************************************************************************************************
+    out->write( |>COALESCE function in Select - Open SQL Enhancement| ).
+    new_line( out ).
+
+    " Execute demo class CL_DEMO_SQL_EXPR_COALESCE
+
+*the COALESCE function is used to return the first non-null value from a list of expressions.
+*It is commonly used to handle null values and provide default values when working with database tables
+
+
+**************************************************************************************************************
+*Host Expression in where -Open SQL Enhancement
+**************************************************************************************************************
+    out->write( |>Host Expression in where -Open SQL Enhancement| ).
+    new_line( out ).
+**************************************************************************************************************
+    SELECT * FROM /dmo/carrier
+    INTO TABLE @DATA(lt_carriers).
+
+    SELECT FROM /dmo/flight
+    FIELDS carrier_id, connection_id, flight_date
+    WHERE carrier_id =
+         @( VALUE /dmo/carrier-carrier_id( lt_carriers[ name = 'United Airlines, Inc.' ]-carrier_id OPTIONAL ) )
+    INTO TABLE @DATA(lt_result).
+
+    CHECK sy-subrc EQ 0.
+
+    out->write( lt_result ).
+
+**************************************************************************************************************
+*Client Handling - Open SQL Enhancement ABAP on HANA
+**************************************************************************************************************
+
+
+**************************************************************************************************************
+*Cross and Right outer join - Open SQL Enhancement ABAP on HANA
+**************************************************************************************************************
+    new_line( out ).
+    out->write( |>Cross and Right outer join - Open SQL Enhancement ABAP on HANA| ).
+    new_line( out ).
+**************************************************************************************************************
+    DATA: lt_table1 TYPE TABLE OF sychar01,
+          lt_table2 TYPE TABLE OF sychar01.
+
+    lt_table1 = VALUE #( ( 'A' )
+                         ( 'B' )
+                         ( 'C' )
+                          ).
+
+    lt_table2 = VALUE #( ( '1' )
+                         ( '2' ) ).
+
+
+    "Cross join
+    SELECT  * FROM
+    @lt_table1 AS t1
+    CROSS JOIN
+    @lt_table2 AS t2
+      INTO TABLE @DATA(lt_result2).  "notice no on condition in cross join.
+
+    out->write( lt_result2 ).
+    new_line( out ).
+
+    "Earlier as cross join was not available, it was being done as below
+    SELECT  * FROM @lt_table1 AS t1
+    INNER JOIN @lt_table2 AS t2
+    ON 1 = 1
+     INTO TABLE @DATA(lt_result3).
+
+    out->write( lt_result3 ).
+    new_line( out ).
+
+
+    SELECT FROM
+    /dmo/flight AS flight
+    RIGHT OUTER JOIN
+    /dmo/carrier AS carrier
+    ON flight~carrier_id = carrier~carrier_id
+    FIELDS
+        flight~carrier_id,
+        flight~flight_date,
+        carrier~name
+       INTO TABLE @DATA(lt_rightouter).
+
+    out->write( lt_rightouter ).
+
+**************************************************************************************************************
+*Group by in detail - Open SQL Enhancement
+    "https://www.youtube.com/watch?v=kItAzbHIclw
+**************************************************************************************************************
+    new_line( out ).
+    out->write( |>Group by in detail - Open SQL Enhancement| ).
+    new_line( out ).
+
+    "Refer to CL_DEMO_SQL_EXPR_WITH_GROUP_BY
+
+    SELECT FROM /dmo/carrier AS carrier
+        INNER JOIN /dmo/flight AS flight
+        ON carrier~carrier_id = flight~carrier_id
+        FIELDS carrier~carrier_id AS carid,
+               flight~currency_code AS currency,
+*               AVG( flight~price ) AS avg,
+*               MAX( flight~price ) AS max,
+*               MIN( flight~price ) AS min,
+*               COUNT( flight~price ) AS count,
+               SUM( flight~price ) AS total_price,
+               CASE                     "Complex case statement
+                    WHEN flight~price > 2500 THEN 'Costly'
+                    WHEN ( flight~price > 500 AND price < 2500 ) THEN 'Reasonable'
+                    ELSE 'Cheap'
+                    END AS Flight_Price
+*        WHERE
+*                CASE                     "Complex case statement
+*                    WHEN flight~price > 2500 THEN 'Costly'
+*                    WHEN ( flight~price > 500 AND price < 2500 ) THEN 'Reasonable'
+*                    ELSE 'Cheap'
+*                    END  EQ 'Cheap' "NOTICE we have the same expression in SELECT and WHERE clause
+
+        GROUP BY
+                carrier~carrier_id,
+                flight~currency_code,
+*                flight~price "This will lead to much more no of lines
+                CASE                     "Complex case statement
+                    WHEN flight~price > 2500 THEN 'Costly'
+                    WHEN ( flight~price > 500 AND price < 2500 ) THEN 'Reasonable'
+                    ELSE 'Cheap'
+                    END "NOTICE we have the same expression in SELECT and GROUP BY clause
+
+        ORDER BY carid
+
+        INTO TABLE @DATA(lt_res).
+
+    out->write( lt_res ).
+**************************************************************************************************************
+
+
+
+
+
+
+
+
+
+**************************************************************************************************************
+**************************************************************************************************************
+
+
+  ENDMETHOD.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ENDCLASS.
