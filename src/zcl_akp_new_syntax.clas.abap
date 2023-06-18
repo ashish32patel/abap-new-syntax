@@ -111,6 +111,33 @@ CLASS zcl_akp_new_syntax DEFINITION
     METHODS notes
       IMPORTING
         i_out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_cte
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_window_expressions
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_union
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_having_clause
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_groupby_detail
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_cross_right_outer_join
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_host_expression
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_coalesce
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS sql_case
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
 
 
 ENDCLASS.
@@ -136,7 +163,7 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    reduce_operator( out ).
 *    group_by( out ).
 *    filter_operator( out ).
-    open_sql_enhancements( out ).
+*    open_sql_enhancements( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -1282,6 +1309,42 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD open_sql_enhancements.
+*Case statement in Select - Open SQL Enhancement
+    sql_case( out ).
+
+*COALESCE function in Select - Open SQL Enhancement
+    sql_coalesce( out ).
+
+
+*Host Expression in where -Open SQL Enhancement
+    sql_host_expression( out ).
+
+*Client Handling - Open SQL Enhancement ABAP on HANA
+
+
+*Cross and Right outer join - Open SQL Enhancement ABAP on HANA
+    sql_cross_right_outer_join( out ).
+
+*Group by in detail - Open SQL Enhancement
+    "https://www.youtube.com/watch?v=kItAzbHIclw
+    sql_groupby_detail( out ).
+
+*Having Clause in Select - Open SQL Enhancement
+    sql_having_clause( out ).
+
+*Union and Union all in Select - Open SQL Enhancement
+    sql_union( out ).
+
+
+*Window Expressions in ABAP SQL
+    sql_window_expressions( out ).
+
+*CommonTableExpression(CTE) in ABAP SQL
+    sql_cte( out ).
+
+  ENDMETHOD.
+
+  METHOD sql_case.
 **************************************************************************************************************
 *Case statement in Select - Open SQL Enhancement
 **************************************************************************************************************
@@ -1327,6 +1390,11 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     CHECK sy-subrc EQ 0.
 
     out->write( lt_flights ).
+
+  ENDMETHOD.
+
+  METHOD sql_coalesce.
+
 **************************************************************************************************************
 *COALESCE function in Select - Open SQL Enhancement
 **************************************************************************************************************
@@ -1338,7 +1406,11 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *the COALESCE function is used to return the first non-null value from a list of expressions.
 *It is commonly used to handle null values and provide default values when working with database tables
 
+  ENDMETHOD.
 
+
+
+  METHOD sql_host_expression.
 **************************************************************************************************************
 *Host Expression in where -Open SQL Enhancement
 **************************************************************************************************************
@@ -1357,10 +1429,10 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
     CHECK sy-subrc EQ 0.
 
     out->write( lt_result ).
+  ENDMETHOD.
 
-**************************************************************************************************************
-*Client Handling - Open SQL Enhancement ABAP on HANA
-**************************************************************************************************************
+
+  METHOD sql_cross_right_outer_join.
 
 
 **************************************************************************************************************
@@ -1415,6 +1487,12 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 
     out->write( lt_rightouter ).
 
+  ENDMETHOD.
+
+
+
+  METHOD sql_groupby_detail.
+
 **************************************************************************************************************
 *Group by in detail - Open SQL Enhancement
     "https://www.youtube.com/watch?v=kItAzbHIclw
@@ -1462,21 +1540,228 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
         INTO TABLE @DATA(lt_res).
 
     out->write( lt_res ).
-**************************************************************************************************************
+
+  ENDMETHOD.
 
 
 
-
-
-
-
-
+  METHOD sql_having_clause.
 
 **************************************************************************************************************
+*Having Clause in Select - Open SQL Enhancement
 **************************************************************************************************************
+
+    new_line( out ).
+    out->write( |>Having Clause in Select - Open SQL Enhancement| ).
+    new_line( out ).
+
+    SELECT FROM /dmo/carrier AS carrier
+        INNER JOIN /dmo/flight AS flight
+        ON carrier~carrier_id = flight~carrier_id
+        FIELDS carrier~carrier_id AS carid,
+               flight~currency_code AS currency,
+               SUM( flight~price ) AS total_price,
+               AVG( flight~price ) AS avg,
+               MAX( flight~price ) AS max,
+               MIN( flight~price ) AS min,
+               COUNT( flight~price ) AS count
+
+        GROUP BY
+                carrier~carrier_id,
+    "we can't use UP TO N rows
+    "Table buffer is bypaseed if UNION used.
+    "UNION ALL | DISTINCT.
+                flight~currency_code
+        HAVING SUM( flight~price ) > 30000
+
+        ORDER BY carid
+        INTO TABLE @DATA(lt_res1).
+
+    out->write( lt_res1 ).
+
+    " Not necessary to have the field/expression in SELECT list, for it to be used in HAVING clause.
+    " However this field/expression should be included in GROUP BY clause, for it it to be used in HAVING clause.
 
 
   ENDMETHOD.
+
+
+
+  METHOD sql_union.
+
+**************************************************************************************************************
+*Union and Union all in Select - Open SQL Enhancement
+**************************************************************************************************************
+    new_line( out ).
+    out->write( |>Union and Union all in Select - Open SQL Enhancement| ).
+    new_line( out ).
+
+    SELECT FROM /dmo/carrier AS carrier
+        INNER JOIN /dmo/flight AS flight
+        ON carrier~carrier_id = flight~carrier_id
+        FIELDS carrier~carrier_id AS carid,
+               flight~currency_code AS currency,
+               SUM( flight~price ) AS total_price,
+               AVG( flight~price ) AS avg,
+               MAX( flight~price ) AS max,
+               MIN( flight~price ) AS min,
+               COUNT( flight~price ) AS count,
+               'Expensive Flights' AS flight_cat
+        GROUP BY
+                carrier~carrier_id,
+                flight~currency_code
+        HAVING SUM( flight~price ) > 30000
+
+*    UNION
+UNION DISTINCT
+*    UNION ALL
+
+    SELECT FROM /dmo/carrier AS carrier
+        INNER JOIN /dmo/flight AS flight
+        ON carrier~carrier_id = flight~carrier_id
+        FIELDS carrier~carrier_id AS carid,
+               flight~currency_code AS currency,
+               SUM( flight~price ) AS total_price,
+               AVG( flight~price ) AS avg,
+               MAX( flight~price ) AS max,
+               MIN( flight~price ) AS min,
+               COUNT( flight~price ) AS count,
+           'Other Flights' AS flight_cat
+        GROUP BY
+                carrier~carrier_id,
+                flight~currency_code
+
+        ORDER BY carid
+        INTO TABLE @DATA(lt_res_union).
+
+
+    out->write( lt_res_union ).
+
+  ENDMETHOD.
+
+
+
+  METHOD sql_window_expressions.
+
+**************************************************************************************************************
+*Window Expressions in ABAP SQL
+**************************************************************************************************************
+    new_line( out ).
+    out->write( |>Window Expressions in ABAP SQL| ).
+    out->write( |>e.g.1| ).
+    new_line( out ).
+
+    SELECT
+    FROM /dmo/flight
+    FIELDS
+    carrier_id AS carid,
+    connection_id AS conid,
+    flight_date AS fldat,
+*    price,
+*    MAX( price ) AS maxprice
+*    LAG( flight_date, 2, '11111111' ) OVER( PARTITION BY carrier_id  ORDER BY connection_id DESCENDING ) AS prev_fldat,
+    LAG( flight_date ) OVER( PARTITION BY carrier_id  ORDER BY connection_id DESCENDING ) AS prev_fldat,
+    RANK(  ) OVER( PARTITION BY carrier_id  ORDER BY connection_id DESCENDING ) AS rank,
+    DENSE_RANK(  ) OVER( PARTITION BY carrier_id  ORDER BY connection_id DESCENDING ) AS denserank,
+    ROW_NUMBER(  ) OVER( PARTITION BY carrier_id  ORDER BY connection_id DESCENDING ) AS rn,
+    MAX( price ) OVER( PARTITION BY carrier_id ) AS maxprc_by_carr,
+    MAX( price ) OVER( ) AS maxprice "Empty OVER clause means sql considers the whole result set as 1 window.
+
+
+*    GROUP BY carrier_id    "Group by is not needed for window functions
+    INTO TABLE @DATA(lt_res_window).
+
+    out->write( lt_res_window ).
+
+
+
+    "*Two different ORDER BY in different window functions can lead unexpected sorting .
+
+    new_line( out ).
+    out->write( |>Window Expressions in ABAP SQL| ).
+    out->write( |>e.g.2| ).
+    new_line( out ).
+
+    SELECT
+    FROM /dmo/flight
+    FIELDS
+    carrier_id AS carid,
+    connection_id AS conid,
+    flight_date AS fldat,
+    price,
+    SUM( price ) OVER( PARTITION BY carrier_id  ) AS TOT_price_per_carrier1,
+    SUM( price ) OVER( PARTITION BY carrier_id ORDER BY price ) AS TOT_price_per_carrier2,
+    SUM( price ) OVER( PARTITION BY carrier_id ORDER BY price
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                        "https://learnsql.com/blog/sql-window-functions-rows-clause/
+                        ) AS TOT_price_per_carrier3
+*    COUNT( price ) OVER( PARTITION BY carrier_id ORDER BY price ) AS flights_per_carrier
+*    COUNT( price ) OVER( PARTITION BY carrier_id ORDER BY price ) AS flights_per_carrier
+
+    WHERE carrier_id IN ( 'AZ' , 'JL' )
+    INTO TABLE @DATA(lt_res_window1).
+
+    out->write( lt_res_window1 ).
+    ""https://learnsql.com/blog/sql-window-functions-rows-clause/
+*The purpose of the ROWS clause is to specify the window frame in relation to the current row. The syntax is:
+*
+*ROWS BETWEEN lower_bound AND upper_bound
+*
+*The bounds can be any of these five options:
+*
+*    UNBOUNDED PRECEDING – All rows before the current row.
+*    n PRECEDING – n rows before the current row.
+*    CURRENT ROW – Just the current row.
+*    n FOLLOWING – n rows after the current row.
+*    UNBOUNDED FOLLOWING – All rows after the current row.
+
+*Here are a couple of things to keep in mind when defining window frames with the ROWS clause:
+*
+*The window frame is evaluated separately within each partition.
+
+*The default option depends on if you use ORDER BY: ***Important
+*   With ORDER BY, the default frame is RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW.
+*   Without ORDER BY, the default frame is ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING.
+
+  ENDMETHOD.
+
+
+  METHOD sql_cte.
+    new_line( out ).
+    out->write( |>CommonTableExpression(CTE) in ABAP SQL| ).
+    new_line( out ).
+    TYPES: BEGIN OF struct,
+             carrier_id    TYPE /dmo/flight-carrier_id,
+             connection_id TYPE /dmo/flight-connection_id,
+             flight_date   TYPE /dmo/flight-flight_date,
+             count         TYPE int8,
+           END OF struct.
+    DATA: itab TYPE TABLE OF struct WITH EMPTY KEY.
+
+*CommonTableExpression(CTE) in ABAP SQL
+
+    WITH
+      +conns AS (
+        SELECT /dmo/flight~carrier_id, connection_id,flight_date
+              FROM /dmo/flight
+                JOIN /dmo/carrier ON /dmo/flight~carrier_id = /dmo/carrier~carrier_id
+              WHERE /dmo/flight~carrier_id = 'AZ' ),
+      +cnts AS (
+        SELECT COUNT(*) AS count
+               FROM +conns )
+      SELECT *
+             FROM +cnts
+               CROSS JOIN +conns
+             ORDER BY carrier_id, connection_id
+             INTO CORRESPONDING FIELDS OF TABLE @itab.
+
+    CHECK sy-subrc EQ 0.
+    out->write( itab ).
+  ENDMETHOD.
+
+
+
+
 
 
 
