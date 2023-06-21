@@ -75,6 +75,9 @@ CLASS zcl_akp_new_syntax DEFINITION
     METHODS open_sql_enhancements
       IMPORTING
         out TYPE REF TO if_oo_adt_classrun_out.
+    METHODS table_expression
+      IMPORTING
+        out TYPE REF TO if_oo_adt_classrun_out.
   PRIVATE SECTION.
     METHODS display_structure1
       IMPORTING
@@ -164,6 +167,7 @@ CLASS zcl_akp_new_syntax IMPLEMENTATION.
 *    group_by( out ).
 *    filter_operator( out ).
 *    open_sql_enhancements( out ).
+    table_expression( out ).
 
     "https://www.youtube.com/watch?v=4KA_s7ct1Pw
     "Corresponding COMPONENT Operator
@@ -1759,6 +1763,137 @@ UNION DISTINCT
     out->write( itab ).
   ENDMETHOD.
 
+
+
+  METHOD table_expression.
+
+
+*1. Segment read with index
+*  (a)Simple read with index
+*  (b)Read index with table expression
+*  (c)table expression without try catch using value operator
+*  (d)table expression with assign fs -
+*2. Read using a free key and table key
+*  (a)Simple read with condition
+*  (b)Read with table expression
+*3.Check for line exist
+*4.Get table index
+*5.Performance comparison
+
+    SELECT FROM /dmo/flight
+    FIELDS carrier_id,
+            connection_id,
+            flight_date,
+            price
+            INTO TABLE @DATA(flights)
+            UP TO 20 ROWS.
+
+    CHECK sy-subrc EQ 0.
+**********************************************************************
+    out->write( flights ).
+    new_line( out ).
+    out->write( |> Simple read with index| ).
+
+    READ TABLE flights INTO DATA(flight) INDEX 22. "Simple read with index
+    IF sy-subrc EQ 0.
+      out->write( flight ).
+
+    ENDIF.
+**********************************************************************
+    new_line( out ).
+    CLEAR flight.
+    out->write( |> Read index with table expression| ).
+    TRY.
+        flight = flights[ 22 ].  "Read index with table expression
+        out->write( flight ).
+
+      CATCH cx_sy_itab_line_not_found.
+    ENDTRY.
+**********************************************************************
+    new_line( out ).
+    out->write( |> table expression without try catch using value operator| ).
+    CLEAR flight.
+    flight = VALUE #( flights[ 22 ] OPTIONAL ).
+    out->write( flight ).
+
+    CLEAR flight.
+    flight = VALUE #( flights[ 22 ] DEFAULT flights[ 1 ] ).
+    out->write( flight ).
+**********************************************************************
+    new_line( out ).
+    out->write( |> table expression with assigning fs -| ).
+    CLEAR flight.
+
+    ASSIGN flights[ 1 ] TO FIELD-SYMBOL(<flight>).
+    IF sy-subrc EQ 0.
+      out->write( <flight> ).
+
+    ENDIF.
+**********************************************************************
+    new_line( out ).
+    out->write( |> Read using a free key and table key| ).
+
+    TYPES: BEGIN OF helper_type,
+             carrier_id    TYPE /dmo/carrier-carrier_id,
+             name          TYPE /dmo/carrier-name,
+             currency_code TYPE /dmo/carrier-currency_code,
+           END OF helper_type.
+    DATA: carriers TYPE STANDARD TABLE OF helper_type
+            WITH UNIQUE SORTED KEY key1 COMPONENTS carrier_id.
+
+    SELECT FROM /dmo/carrier
+    FIELDS carrier_id,
+            name,
+            currency_code
+            INTO TABLE @carriers.
+    CHECK sy-subrc EQ 0.
+
+    out->write( carriers ).
+    new_line( out ).
+
+    READ TABLE carriers INTO DATA(carrier) "Notice the warning here
+        WITH KEY carrier_id = 'AA'.
+    IF sy-subrc EQ 0.
+      out->write( carrier ).
+    ENDIF.
+
+    CLEAR carrier.
+    READ TABLE carriers INTO carrier
+        WITH TABLE KEY key1 COMPONENTS carrier_id = 'AA'.
+    IF sy-subrc EQ 0.
+      out->write( carrier ).
+    ENDIF.
+
+    ASSIGN carriers[ carrier_id = 'AC' ] TO FIELD-SYMBOL(<carrier>).
+    "Notice the warning here:
+    "The secondary key "KEY1" is specified in full. However, the primary key is used to access the table.
+    "Check whether access using "KEY1" is more efficient.
+    IF sy-subrc EQ 0.
+      out->write( <carrier> ).
+    ENDIF.
+
+
+    ASSIGN carriers[ KEY key1 carrier_id = 'AC' ] TO <carrier>.
+    "Notice NO warning here
+    IF sy-subrc EQ 0.
+      out->write( <carrier> ).
+    ENDIF.
+
+**********************************************************************
+    new_line( out ).
+    out->write( |> Check for line exist| ).
+
+    IF line_exists( carriers[ KEY key1 carrier_id = 'AC' ] ).
+      out->write( |Carrier exists.| ).
+    ENDIF.
+**********************************************************************
+    new_line( out ).
+    out->write( |> Get table index| ).
+
+    DATA(lv_index) = line_index( carriers[ KEY key1 carrier_id = 'AC' ] ).
+    out->write( |Carrier exists at index { lv_index }| ).
+
+  ENDMETHOD.
 
 
 
